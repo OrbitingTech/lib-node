@@ -1,0 +1,20 @@
+{
+    "ignorePatterns": ["node_modules/"],
+    "env": {
+        "node": true,
+        "es6": true
+    },
+    "parserOptions": {
+        "sourceType": "module",
+        "ecmaVersion": "latest"
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:jsdoc/recommended",
+        "plugin:prettier/recommended"
+    ],
+    "rules": {
+        "prettier/prettier": "warn",
+        "no-unused-vars": "warn"
+    }
+}

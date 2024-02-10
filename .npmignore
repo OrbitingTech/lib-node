@@ -1,0 +1,7 @@
+coverage/
+.vscode/
+
+.eslintrc.json
+.gitignore
+.prettierrc
+README.md

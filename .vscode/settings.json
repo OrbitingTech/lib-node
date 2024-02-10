@@ -1,0 +1,10 @@
+{
+    "eslint.enable": true,
+    "eslint.validate": ["javascript"],
+
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+    "[javascript]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    }
+}
