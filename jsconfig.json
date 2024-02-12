@@ -1,9 +1,0 @@
-{
-    "compilerOptions": {
-        "checkJs": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "allowJs": true
-    },
-    "include": ["**/*.js"]
-}

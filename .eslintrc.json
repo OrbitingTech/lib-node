@@ -1,5 +1,5 @@
 {
-    "ignorePatterns": ["node_modules/"],
+    "ignorePatterns": ["node_modules/", "lib/"],
     "env": {
         "node": true,
         "es6": true
@@ -10,11 +10,13 @@
     },
     "extends": [
         "eslint:recommended",
-        "plugin:jsdoc/recommended",
+        "plugin:@typescript-eslint/recommended",
         "plugin:prettier/recommended"
     ],
     "rules": {
         "prettier/prettier": "warn",
-        "no-unused-vars": "warn"
+
+        "@typescript-eslint/consistent-type-imports": "warn",
+        "@typescript-eslint/no-unused-vars": "warn"
     }
 }

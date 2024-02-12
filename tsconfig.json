@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "esnext",
+        "lib": ["esnext", "dom"],
+        "declaration": true,
+        "outDir": "./lib",
+        "rootDir": "./src",
+        "strict": true,
+
+        "moduleResolution": "node",
+        "baseUrl": ".",
+
+        "esModuleInterop": true,
+
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "test", "**/*.test.ts"]
+}
