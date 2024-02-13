@@ -1,10 +1,9 @@
 {
     "eslint.enable": true,
-    "eslint.validate": ["typescript"],
+    "eslint.validate": ["typescript", "javascript"],
 
     "editor.defaultFormatter": "esbenp.prettier-vscode",
 
-    "[typescript]": {
-        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
-    }
+    "[typescript]": { "editor.defaultFormatter": "dbaeumer.vscode-eslint" },
+    "[javascript]": { "editor.defaultFormatter": "dbaeumer.vscode-eslint" }
 }

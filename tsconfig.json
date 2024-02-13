@@ -10,6 +10,7 @@
 
         "moduleResolution": "node",
         "baseUrl": ".",
+        "sourceMap": true,
 
         "esModuleInterop": true,
 
@@ -17,5 +18,5 @@
         "forceConsistentCasingInFileNames": true
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "test"]
+    "exclude": ["node_modules", "dist"]
 }
