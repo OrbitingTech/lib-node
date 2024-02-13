@@ -1,16 +1,18 @@
-import type { InferTypeFromSchema } from './json-schema-infer.js'
+import type { InferTypeFromSchema } from './types/json-schema-infer-type.js'
+import type { JSONSchema } from './types/schema.js'
+import type { WebSocketOptions } from './websocket-handler.js'
 import type { AxiosInstance } from 'axios'
 
 import { EventEmitter } from 'node:events'
 import axios from 'axios'
 
+import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
 import { WebSocketClient } from './websocket-handler.js'
 
 export type ClientSettings = {
     token: string
     baseURL?: string
-    fetchOnly?: boolean
-}
+} & ({ fetchOnly: true } | { fetchOnly?: false; websocket?: WebSocketOptions })
 
 export class OrbitingClient<T> extends EventEmitter {
     public config: T | null = null
@@ -53,10 +55,18 @@ export class OrbitingClient<T> extends EventEmitter {
         websocketURL.pathname = '/api/ws'
 
         this.websocketURL = websocketURL.toString()
-        this.wsClient = new WebSocketClient(this.websocketURL, this.token)
+        this.wsClient = new WebSocketClient(
+            this.websocketURL,
+            this.token,
+            settings.websocket,
+        )
     }
 
-    schema<S>(schema: S): OrbitingClient<InferTypeFromSchema<S>> {
+    schema<S extends JSONSchema>(
+        schema: S,
+    ): OrbitingClient<InferTypeFromSchema<S>> {
+        this.config = generateDefaultsFromSchema(schema) as T
+
         this.axiosClient
             .post('/apps/schema', schema)
             // throw the initialization call into the promise chain,

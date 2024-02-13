@@ -13,9 +13,11 @@ test('it works', t => {
         properties: {
             foo: { type: 'string', default: '' },
             bar: { type: 'integer', default: 1 },
-            baz: { type: 'array', items: { type: 'number' }, default: [] },
+            baz: { type: 'array', items: { type: 'boolean' }, default: [] },
         },
     } as const)
+
+    console.log(orb.config)
 
     // logs the current config every 2 seconds
     setInterval(() => {

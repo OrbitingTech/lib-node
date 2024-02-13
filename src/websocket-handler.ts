@@ -6,6 +6,11 @@ export type Packet = {
     data: unknown
 }
 
+export type WebSocketOptions = {
+    autoReconnect?: boolean
+    timeoutMS?: number
+}
+
 export class WebSocketError extends Error {
     constructor(public readonly message: string) {
         super(message)
@@ -19,24 +24,46 @@ export class WebSocketClient extends EventEmitter {
     private receivedHello = false
     private heartbeatTimeout: NodeJS.Timeout | null = null
 
+    private closeReason: string | null = null
+
     constructor(
         private readonly websocketURL: string,
         private readonly authToken: string,
-        private readonly autoReconnect = true,
+        private readonly options: WebSocketOptions = {},
     ) {
         super()
+
+        this.options.autoReconnect ??= true
+        this.options.timeoutMS ||= 5000
+    }
+
+    private resetState() {
+        this.receivedHello = false
+        this.heartbeatTimeout = null
+        this.closeReason = null
     }
 
     connect() {
         this.ws = new WebSocket(this.websocketURL)
 
-        // reset the state
-        this.receivedHello = false
-        this.heartbeatTimeout = null
+        this.resetState()
+
+        console.log('ddd')
+
+        const timeout = setTimeout(() => {
+            console.log('???')
+
+            if (this.ws!.readyState === WebSocket.CONNECTING) {
+                this.stop()
+                throw new WebSocketError('Connection timed out')
+            }
+        }, this.options.timeoutMS)
 
         this.ws.on('open', () => {
             // immediately upon connection, send the identify packet
             this.sendPacket('identify', { token: this.authToken })
+
+            clearTimeout(timeout)
         })
 
         this.ws.on('message', data => {
@@ -57,20 +84,21 @@ export class WebSocketClient extends EventEmitter {
             this.handlePacket(packet)
         })
 
-        this.ws.on('close', code => {
-            console.log({ code })
-
+        this.ws.on('close', () => {
             // we do not need any listeners anymore
             this.ws!.removeAllListeners()
 
-            if (this.autoReconnect) this.connect()
+            // if there's a close reason, we don't want to reconnect
+            if (this.options.autoReconnect && !this.closeReason) {
+                this.connect()
+            }
         })
     }
 
     private handlePacket(packet: Packet) {
         switch (packet.type) {
             case 'error':
-                this.stop()
+                this.closeReason = packet.data as string
                 throw new WebSocketError(
                     'Received error packet: ' + packet.data,
                 )
