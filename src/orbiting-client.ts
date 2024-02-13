@@ -3,9 +3,10 @@ import type { AxiosInstance } from 'axios'
 
 import { EventEmitter } from 'node:events'
 import axios from 'axios'
-import { WebSocket } from 'ws'
 
-export type OrbitingConfig = {
+import { WebSocketClient } from './websocket-handler.js'
+
+export type ClientSettings = {
     token: string
     baseURL?: string
     fetchOnly?: boolean
@@ -14,21 +15,23 @@ export type OrbitingConfig = {
 export class OrbitingClient<T> extends EventEmitter {
     public config: T | null = null
 
+    private isInitialized = false
+
     private readonly token: string
     private readonly baseURL: string
 
     private readonly axiosClient: AxiosInstance
 
+    private readonly wsClient: WebSocketClient | null = null
     private readonly websocketURL: string | null = null
-    private readonly ws: WebSocket | null = null
 
-    constructor(config: OrbitingConfig) {
+    constructor(private readonly settings: ClientSettings) {
         super()
 
-        this.token = config.token
+        this.token = settings.token
 
         // default the base url to the public url
-        this.baseURL = config.baseURL || 'https://orbiting.app/api'
+        this.baseURL = settings.baseURL || 'https://orbiting.app/api'
         this.axiosClient = axios.create({
             baseURL: this.baseURL,
             headers: {
@@ -36,7 +39,7 @@ export class OrbitingClient<T> extends EventEmitter {
             },
         })
 
-        if (config.fetchOnly) {
+        if (settings.fetchOnly) {
             this.fetchConfig()
             return
         }
@@ -47,27 +50,32 @@ export class OrbitingClient<T> extends EventEmitter {
             websocketURL.protocol === 'https:' ? 'wss:' : 'ws:'
 
         websocketURL.protocol = websocketProtocol
-        websocketURL.pathname = '/ws'
+        websocketURL.pathname = '/api/ws'
 
         this.websocketURL = websocketURL.toString()
-        this.ws = new WebSocket(this.websocketURL)
-
-        this.initWebsocket()
+        this.wsClient = new WebSocketClient(this.websocketURL, this.token)
     }
 
     schema<S>(schema: S): OrbitingClient<InferTypeFromSchema<S>> {
-        this.axiosClient.post('/apps/schema', schema).catch(err => {
-            if (!axios.isAxiosError(err) || !err.response) {
-                throw err
-            }
+        this.axiosClient
+            .post('/apps/schema', schema)
+            // throw the initialization call into the promise chain,
+            // after the schema is specified with no errors we are good to connect
+            .then(() => this.init())
+            .catch(err => {
+                if (!axios.isAxiosError(err) || !err.response) {
+                    throw err
+                }
 
-            throw new Error('Failed to send schema: ' + err.response.data.error)
-        })
+                throw new Error(
+                    'Failed to send schema: ' + err.response.data.error,
+                )
+            })
 
         return this as unknown as OrbitingClient<InferTypeFromSchema<S>>
     }
 
-    layout(layout: unknown): this {
+    layout(layout: unknown) {
         this.axiosClient.post('/apps/layout', { layout }).catch(err => {
             if (!axios.isAxiosError(err) || !err.response) {
                 throw err
@@ -84,27 +92,35 @@ export class OrbitingClient<T> extends EventEmitter {
         try {
             response = await this.axiosClient.get('/apps/config')
         } catch (err) {
+            if (!axios.isAxiosError(err) || !err.response) {
+                throw err
+            }
+
             throw new Error(
-                'Failed to fetch config, check your token and URL: ',
-                // err.message,
+                'Failed to update the config: ' + err.response.data.error,
             )
         }
 
         this.config = response.data
+        return this.config
     }
 
-    /**
-     * @private
-     */
-    initWebsocket() {
-        if (!this.websocketURL || !this.ws) {
-            throw new Error('No websocket URL to connect to')
+    private async init() {
+        if (this.isInitialized) {
+            throw new Error('Client is already initialized')
         }
 
-        this.ws.on('open', () => {
-            this.emit('open')
-        })
+        // regardless what happens below, we are initialized
+        this.isInitialized = true
 
-        // this.ws.on('message', data => {})
+        if (this.settings.fetchOnly) {
+            await this.fetchConfig()
+            return
+        }
+
+        this.wsClient!.connect()
+        this.wsClient!.on('config', (config: T) => {
+            this.config = config
+        })
     }
 }

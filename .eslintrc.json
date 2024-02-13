@@ -17,6 +17,9 @@
         "prettier/prettier": "warn",
 
         "@typescript-eslint/consistent-type-imports": "warn",
-        "@typescript-eslint/no-unused-vars": "warn"
+        "@typescript-eslint/no-unused-vars": "warn",
+
+        // adding more non-null assertions to the code makes it clearer (in some cases) imo
+        "@typescript-eslint/no-extra-non-null-assertion": "off"
     }
 }

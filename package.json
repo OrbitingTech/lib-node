@@ -18,12 +18,25 @@
         "type": "git",
         "url": "https://github.com/OrbitingTech/lib-node.git"
     },
+    "ava": {
+        "require": [
+            "dotenv/config"
+        ],
+        "typescript": {
+            "rewritePaths": {
+                "src/": "lib/"
+            },
+            "compile": "tsc"
+        }
+    },
     "devDependencies": {
+        "@ava/typescript": "^4.1.0",
         "@ianvs/prettier-plugin-sort-imports": "^4.1.1",
         "@types/node": "^20.11.17",
         "@types/ws": "^8.5.10",
         "ava": "^6.1.1",
         "c8": "^9.1.0",
+        "dotenv": "^16.4.3",
         "eslint": "^8.56.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-prettier": "^5.1.3",

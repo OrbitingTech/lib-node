@@ -7,6 +7,7 @@ export type JSONSchemaType = {
     array: unknown[]
 }
 
+// typescript is both a blessing and a curse
 export type InferTypeFromSchema<T> = T extends {
     type: 'object'
     properties: Record<string, unknown>

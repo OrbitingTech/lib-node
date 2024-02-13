@@ -3,9 +3,11 @@ import test from 'ava'
 import { createClient } from './index.js'
 
 test('it works', t => {
-    const { config } = createClient({
+    t.timeout(300000)
+
+    const orb = createClient({
         token: process.env.ORBITING_TOKEN as string,
-        baseURL: 'http://localhost:3000/api',
+        baseURL: 'http://localhost:3000/api', // just developer stuff
     }).schema({
         type: 'object',
         properties: {
@@ -15,6 +17,10 @@ test('it works', t => {
         },
     } as const)
 
-    t.log(config)
+    // logs the current config every 2 seconds
+    setInterval(() => {
+        console.log(orb.config)
+    }, 2000)
+
     t.pass()
 })
