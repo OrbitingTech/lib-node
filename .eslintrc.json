@@ -19,6 +19,8 @@
         "@typescript-eslint/consistent-type-imports": "warn",
         "@typescript-eslint/no-unused-vars": "warn",
 
+        "@typescript-eslint/no-unsafe-declaration-merging": "off",
+
         // adding more non-null assertions to the code makes it clearer (in some cases) imo
         "@typescript-eslint/no-extra-non-null-assertion": "off"
     }
