@@ -10,8 +10,8 @@
     "scripts": {
         "prepublish": "rimraf lib && tsc -b tsconfig.dist.json",
         "format": "prettier --write .",
-        "test": "ava",
-        "coverage": "c8 --all ava"
+        "test": "tsc && ava",
+        "coverage": "tsc && c8 ava"
     },
     "author": "Orbiting Tech",
     "license": "Apache-2.0",
@@ -28,12 +28,23 @@
             "rewritePaths": {
                 "src/": "lib/"
             },
-            "compile": "tsc"
+            "compile": false
         }
+    },
+    "c8": {
+        "all": true,
+        "include": [
+            "lib/**/*.js"
+        ],
+        "exclude": [
+            "lib/types/**/*",
+            "**/*.test.js"
+        ]
     },
     "devDependencies": {
         "@ava/typescript": "^4.1.0",
         "@ianvs/prettier-plugin-sort-imports": "^4.1.1",
+        "@types/debug": "^4.1.12",
         "@types/node": "^20.11.17",
         "@types/ws": "^8.5.10",
         "ava": "^6.1.1",
@@ -49,6 +60,7 @@
     },
     "dependencies": {
         "axios": "^1.6.7",
+        "debug": "^4.3.4",
         "ws": "^8.16.0"
     }
 }
