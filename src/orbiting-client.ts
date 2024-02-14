@@ -12,7 +12,9 @@ import { WebSocketClient } from './websocket-handler.js'
 export type ClientSettings = {
     token: string
     baseURL?: string
-} & ({ fetchOnly: true } | { fetchOnly?: false; websocket?: WebSocketOptions })
+    fetchOnly?: boolean
+    websocket?: WebSocketOptions
+}
 
 export class OrbitingClient<T> extends EventEmitter {
     public config: T | null = null
@@ -62,25 +64,26 @@ export class OrbitingClient<T> extends EventEmitter {
         )
     }
 
-    schema<S extends JSONSchema>(
-        schema: S,
-    ): OrbitingClient<InferTypeFromSchema<S>> {
+    schema<
+        P extends JSONSchema['properties'],
+        S = { type: 'object'; properties: P },
+    >(properties: P): OrbitingClient<InferTypeFromSchema<S>> {
+        // no point in forcing the user to specify these
+        // if they are required
+        const schema = {
+            type: 'object',
+            properties,
+        } as JSONSchema
+
         this.config = generateDefaultsFromSchema(schema) as T
 
-        this.axiosClient
-            .post('/apps/schema', schema)
-            // throw the initialization call into the promise chain,
-            // after the schema is specified with no errors we are good to connect
-            .then(() => this.init())
-            .catch(err => {
-                if (!axios.isAxiosError(err) || !err.response) {
-                    throw err
-                }
+        this.axiosClient.post('/apps/schema', schema).catch(err => {
+            if (!axios.isAxiosError(err) || !err.response) {
+                throw err
+            }
 
-                throw new Error(
-                    'Failed to send schema: ' + err.response.data.error,
-                )
-            })
+            throw new Error('Failed to send schema: ' + err.response.data.error)
+        })
 
         return this as unknown as OrbitingClient<InferTypeFromSchema<S>>
     }
@@ -115,7 +118,7 @@ export class OrbitingClient<T> extends EventEmitter {
         return this.config
     }
 
-    private async init() {
+    async init(): Promise<T> {
         if (this.isInitialized) {
             throw new Error('Client is already initialized')
         }
@@ -124,13 +127,24 @@ export class OrbitingClient<T> extends EventEmitter {
         this.isInitialized = true
 
         if (this.settings.fetchOnly) {
-            await this.fetchConfig()
-            return
+            return this.fetchConfig() as T
         }
 
         this.wsClient!.connect()
-        this.wsClient!.on('config', (config: T) => {
-            this.config = config
+        this.wsClient!.on('config', config => {
+            this.config = config as T
+        })
+
+        // when we receive the first config packet, we can resolve the promise
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                reject(new Error('Failed to initialize the client'))
+            }, this.settings.websocket?.timeoutMS || 5000)
+
+            this.wsClient?.once('config', resolve)
+            this.wsClient?.once('close', reason => {
+                reject(new Error('WebSocket closed: ' + reason))
+            })
         })
     }
 }
