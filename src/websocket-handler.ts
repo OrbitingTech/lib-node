@@ -1,13 +1,14 @@
 import EventEmitter from 'events'
 import { WebSocket } from 'ws'
 
+import { websocketLog } from './logger.js'
+
 export type Packet = {
     type: string
     data: unknown
 }
 
 export type WebSocketOptions = {
-    autoReconnect?: boolean
     reconnectDelayMS?: number
     reconnectAttempts?: number
 
@@ -15,15 +16,17 @@ export type WebSocketOptions = {
 }
 
 export class WebSocketError extends Error {
+    name = 'WebSocketError'
+
     constructor(public readonly message: string) {
         super(message)
     }
 }
 
-export interface WebSocketClient {
+export declare interface WebSocketClient {
     on(event: 'open', listener: () => void): this
     on(event: 'config', listener: (config: unknown) => void): this
-    on(event: 'close', listener: (reason: string) => void): this
+    on(event: 'close', listener: (err?: Error) => void): this
 }
 
 export class WebSocketClient extends EventEmitter {
@@ -32,6 +35,9 @@ export class WebSocketClient extends EventEmitter {
     // state stuff
     private receivedHello = false
     private heartbeatTimeout: NodeJS.Timeout | null = null
+
+    private closeError: Error | null = null
+    private selfClose = false
 
     constructor(
         private readonly websocketURL: string,
@@ -44,6 +50,9 @@ export class WebSocketClient extends EventEmitter {
     private resetState() {
         this.receivedHello = false
         this.heartbeatTimeout = null
+
+        this.closeError = null
+        this.selfClose = false
     }
 
     connect(reconnectCount = 0) {
@@ -52,14 +61,17 @@ export class WebSocketClient extends EventEmitter {
         this.resetState()
 
         const timeout = setTimeout(() => {
+            websocketLog('Connection timed out')
+
             if (this.ws!.readyState === WebSocket.CONNECTING) {
-                this.stop()
-                this.emit('close', 'timeout')
-                throw new WebSocketError('Connection timed out')
+                this.close()
+                this.emit('close', new WebSocketError('Connection timed out'))
             }
         }, this.options.timeoutMS || 5000)
 
         this.ws.on('open', () => {
+            websocketLog('Connected to websocket server')
+
             // reset the reconnect count upon successful connection
             reconnectCount = 0
 
@@ -81,30 +93,44 @@ export class WebSocketClient extends EventEmitter {
                     )
                 }
             } catch (err) {
-                this.stop()
-                throw new WebSocketError('Failed to parse packet: ' + err)
+                this.close(err as Error)
+                return
             }
 
             this.handlePacket(packet)
         })
 
         const onClose = () => {
-            // if we have a close reason, it means that the connection was closed by the server
-            this.emit('close', 'error')
+            websocketLog('Connection closed')
 
             // we do not need any listeners anymore, in fact they will only cause issues
             this.ws!.removeAllListeners()
+            clearTimeout(timeout)
+
+            if (this.selfClose) {
+                this.emit('close', this.closeError)
+                return
+            }
 
             const maxAttempts = this.options.reconnectAttempts ?? 5
             const exceededMaxReconnectAttempts =
-                maxAttempts > 0 && reconnectCount >= maxAttempts
+                maxAttempts >= 0 && reconnectCount >= maxAttempts
 
-            if (
-                !(this.options.autoReconnect ?? true) ||
-                exceededMaxReconnectAttempts
-            ) {
-                throw new WebSocketError('Exceeded max reconnect attempts')
+            // when we exceed the max attempts we should finally emit a close event
+            if (exceededMaxReconnectAttempts) {
+                this.emit(
+                    'close',
+                    new WebSocketError('Exceeded max reconnect attempts'),
+                )
+                return
             }
+
+            websocketLog(
+                'Attempting to reconnect:',
+                reconnectCount + 1,
+                'of',
+                maxAttempts,
+            )
 
             setTimeout(
                 () => this.connect(reconnectCount + 1),
@@ -117,16 +143,21 @@ export class WebSocketClient extends EventEmitter {
     }
 
     private handlePacket(packet: Packet) {
+        websocketLog('Received packet:', packet.type, packet.data)
+
         switch (packet.type) {
             case 'error':
-                throw new WebSocketError(
-                    'Received error packet: ' + packet.data,
+                this.close(
+                    new WebSocketError('Received error packet: ' + packet.data),
                 )
+                break
             case 'invalidate':
-                this.stop()
-                throw new WebSocketError(
-                    `Received invalidate packet: ${packet.data}, please reconnect with your new token`,
+                this.close(
+                    new WebSocketError(
+                        `Received invalidate packet: ${packet.data}, please reconnect with your new token`,
+                    ),
                 )
+                break
             case 'hello':
                 // we only want to start the heartbeat once
                 if (this.receivedHello) {
@@ -138,11 +169,14 @@ export class WebSocketClient extends EventEmitter {
                     typeof packet.data !== 'object' ||
                     !('heartbeatIntervalMS' in packet.data)
                 ) {
-                    this.stop()
-                    throw new WebSocketError(
-                        'Received invalid hello packet, please update the client',
+                    this.close(
+                        new WebSocketError(
+                            'Received invalid hello packet, please update the client',
+                        ),
                     )
+                    break
                 }
+
                 this.heartbeat(packet.data.heartbeatIntervalMS as number)
                 this.receivedHello = true
                 break
@@ -152,10 +186,12 @@ export class WebSocketClient extends EventEmitter {
                     typeof packet.data !== 'object' ||
                     !('config' in packet.data)
                 ) {
-                    this.stop()
-                    throw new WebSocketError(
-                        'Received invalid config packet, please update the client',
+                    this.close(
+                        new WebSocketError(
+                            'Received invalid config packet, please update the client',
+                        ),
                     )
+                    break
                 }
 
                 this.emit('config', packet.data.config)
@@ -163,10 +199,12 @@ export class WebSocketClient extends EventEmitter {
             case 'heartbeat':
                 break // there's nothing to be done in response to a heartbeat (yet)
             default:
-                this.stop()
-                throw new WebSocketError(
-                    `Received unknown packet type: ${packet.type}, please update the client`,
+                this.close(
+                    new WebSocketError(
+                        `Received unknown packet type: ${packet.type}, please update the client`,
+                    ),
                 )
+                break
         }
     }
 
@@ -184,13 +222,17 @@ export class WebSocketClient extends EventEmitter {
 
     private sendPacket(type: string, data: unknown) {
         if (!this.ws) {
-            throw new Error('WebSocket is not connected')
+            throw new WebSocketError('WebSocket is not connected')
         }
+
+        websocketLog('Sending packet:', type, data)
 
         this.ws.send(JSON.stringify({ type, data }))
     }
 
-    stop() {
+    close(error: Error | null = null) {
+        this.closeError = error
+
         if (this.heartbeatTimeout) clearTimeout(this.heartbeatTimeout)
 
         if (this.ws) {

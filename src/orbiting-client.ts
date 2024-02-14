@@ -6,6 +6,7 @@ import type { AxiosInstance } from 'axios'
 import { EventEmitter } from 'node:events'
 import axios from 'axios'
 
+import { log } from './logger.js'
 import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
 import { WebSocketClient } from './websocket-handler.js'
 
@@ -14,6 +15,14 @@ export type ClientSettings = {
     baseURL?: string
     fetchOnly?: boolean
     websocket?: WebSocketOptions
+}
+
+export class OrbitingError extends Error {
+    name = 'OrbitingError'
+
+    constructor(public readonly message: string) {
+        super(message)
+    }
 }
 
 export class OrbitingClient<T> extends EventEmitter {
@@ -31,6 +40,10 @@ export class OrbitingClient<T> extends EventEmitter {
 
     constructor(private readonly settings: ClientSettings) {
         super()
+
+        this.on('error', err => {
+            log('Error:', err.message)
+        })
 
         this.token = settings.token
 
@@ -79,10 +92,13 @@ export class OrbitingClient<T> extends EventEmitter {
 
         this.axiosClient.post('/apps/schema', schema).catch(err => {
             if (!axios.isAxiosError(err) || !err.response) {
-                throw err
+                log('Something went very wrong', err)
+                return
             }
 
-            throw new Error('Failed to send schema: ' + err.response.data.error)
+            // emit an error rather than throwing an error, since this promise is off in its
+            // own world and the user might not be able to catch it
+            this.emit('error', new OrbitingError(err.response.data.error))
         })
 
         return this as unknown as OrbitingClient<InferTypeFromSchema<S>>
@@ -91,10 +107,11 @@ export class OrbitingClient<T> extends EventEmitter {
     layout(layout: unknown) {
         this.axiosClient.post('/apps/layout', { layout }).catch(err => {
             if (!axios.isAxiosError(err) || !err.response) {
-                throw err
+                log('Something went very wrong', err)
+                return
             }
 
-            throw new Error('Failed to send layout: ' + err.response.data.error)
+            this.emit('error', new OrbitingError(err.response.data.error))
         })
 
         return this
@@ -109,7 +126,7 @@ export class OrbitingClient<T> extends EventEmitter {
                 throw err
             }
 
-            throw new Error(
+            throw new OrbitingError(
                 'Failed to update the config: ' + err.response.data.error,
             )
         }
@@ -118,9 +135,9 @@ export class OrbitingClient<T> extends EventEmitter {
         return this.config
     }
 
-    async init(): Promise<T> {
+    async init({ waitForReconnects = false }): Promise<T> {
         if (this.isInitialized) {
-            throw new Error('Client is already initialized')
+            throw new OrbitingError('Client is already initialized')
         }
 
         // regardless what happens below, we are initialized
@@ -131,20 +148,63 @@ export class OrbitingClient<T> extends EventEmitter {
         }
 
         this.wsClient!.connect()
+
         this.wsClient!.on('config', config => {
             this.config = config as T
+
+            this.emit('update', config)
         })
 
-        // when we receive the first config packet, we can resolve the promise
+        this.wsClient?.on('close', error => {
+            if (error) {
+                this.emit('error', error)
+            }
+        })
+
+        // when we receive the first config packet, we can resolve via a promise
+        // that makes use of the event emitters on the websocket handler
         return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                reject(new Error('Failed to initialize the client'))
-            }, this.settings.websocket?.timeoutMS || 5000)
+            // if the user has specified to wait until the close event then we will not start
+            // a timeout to reject the promise, this means `waitForClose` blocks
+            // until the websocket finishes or fails all reconnect attempts
+            const timeout = waitForReconnects
+                ? undefined
+                : setTimeout(() => {
+                      cleanup()
+                      reject(
+                          new OrbitingError('Failed to initialize the client'),
+                      )
+                  }, this.settings.websocket?.timeoutMS || 5000)
 
-            this.wsClient?.once('config', resolve)
-            this.wsClient?.once('close', reason => {
-                reject(new Error('WebSocket closed: ' + reason))
-            })
+            const onConfig = (config: T) => {
+                cleanup()
+                resolve(config)
+            }
+
+            const onClose = (error: Error) => {
+                cleanup()
+                reject(error)
+            }
+
+            // simple cleanup function to ensure nothing carries on past its desired lifespan
+            const cleanup = () => {
+                clearTimeout(timeout)
+
+                // clear both event listeners so one of them doesn't continue living
+                this.wsClient?.off('config', onConfig)
+                this.wsClient?.off('close', onClose)
+            }
+
+            this.wsClient?.once('config', onConfig)
+            this.wsClient?.once('close', onClose)
         })
+    }
+
+    close() {
+        if (this.settings.fetchOnly) {
+            return
+        }
+
+        this.wsClient?.close()
     }
 }
