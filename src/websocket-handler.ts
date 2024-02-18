@@ -48,8 +48,12 @@ export class WebSocketClient extends EventEmitter {
     }
 
     private resetState() {
+        if (this.heartbeatTimeout) {
+            clearTimeout(this.heartbeatTimeout)
+            this.heartbeatTimeout = null
+        }
+
         this.receivedHello = false
-        this.heartbeatTimeout = null
 
         this.closeError = null
         this.selfClose = false
@@ -60,7 +64,7 @@ export class WebSocketClient extends EventEmitter {
 
         this.resetState()
 
-        const timeout = setTimeout(() => {
+        const connectionTimeout = setTimeout(() => {
             websocketLog('Connection timed out')
 
             if (this.ws!.readyState === WebSocket.CONNECTING) {
@@ -79,7 +83,7 @@ export class WebSocketClient extends EventEmitter {
             this.sendPacket('identify', { token: this.authToken })
             this.emit('open')
 
-            clearTimeout(timeout)
+            clearTimeout(connectionTimeout)
         })
 
         this.ws.on('message', data => {
@@ -105,7 +109,7 @@ export class WebSocketClient extends EventEmitter {
 
             // we do not need any listeners anymore, in fact they will only cause issues
             this.ws!.removeAllListeners()
-            clearTimeout(timeout)
+            clearTimeout(connectionTimeout)
 
             if (this.selfClose) {
                 this.emit('close', this.closeError)
@@ -209,15 +213,18 @@ export class WebSocketClient extends EventEmitter {
     }
 
     private heartbeat(heartbeatIntervalMS: number) {
-        if (!this.ws) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             return // we don't need to throw an error, we can just assume that the connection is closed
         }
 
-        setTimeout(() => {
-            // send with an empty object because that is what's required by the server
-            this.sendPacket('heartbeat', {})
-            this.heartbeat(heartbeatIntervalMS)
-        }, heartbeatIntervalMS)
+        // send with an empty object because that is what's required by the server
+        this.sendPacket('heartbeat', {})
+
+        this.heartbeatTimeout = setTimeout(
+            this.heartbeat.bind(this),
+            heartbeatIntervalMS,
+            heartbeatIntervalMS,
+        )
     }
 
     private sendPacket(type: string, data: unknown) {
@@ -232,8 +239,7 @@ export class WebSocketClient extends EventEmitter {
 
     close(error: Error | null = null) {
         this.closeError = error
-
-        if (this.heartbeatTimeout) clearTimeout(this.heartbeatTimeout)
+        this.selfClose = true
 
         if (this.ws) {
             this.ws.close()
