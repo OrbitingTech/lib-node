@@ -92,6 +92,7 @@ export class OrbitingClient<T> extends EventEmitter {
 
         this.axiosClient.post('/apps/schema', schema).catch(err => {
             if (!axios.isAxiosError(err) || !err.response) {
+                this.emit('error', err)
                 log('Something went very wrong', err)
                 return
             }
@@ -107,6 +108,7 @@ export class OrbitingClient<T> extends EventEmitter {
     layout(layout: unknown) {
         this.axiosClient.post('/apps/layout', { layout }).catch(err => {
             if (!axios.isAxiosError(err) || !err.response) {
+                this.emit('error', err)
                 log('Something went very wrong', err)
                 return
             }
