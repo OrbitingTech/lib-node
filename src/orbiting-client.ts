@@ -2,6 +2,7 @@ import type { InferTypeFromSchema } from './types/json-schema-infer-type.js'
 import type { JSONSchema } from './types/schema.js'
 import type { WebSocketOptions } from './websocket-handler.js'
 import type { AxiosInstance } from 'axios'
+import type { ObjectSchema } from 'fluent-json-schema'
 
 import { EventEmitter } from 'node:events'
 import axios from 'axios'
@@ -82,7 +83,15 @@ export class OrbitingClient<T> extends EventEmitter {
     schema<
         P extends JSONSchema['properties'],
         S = { type: 'object'; properties: P },
-    >(properties: P): OrbitingClient<InferTypeFromSchema<S>> {
+    >(properties: P | ObjectSchema): OrbitingClient<InferTypeFromSchema<S>> {
+        if (properties.isFluentJSONSchema) {
+            properties = (properties.valueOf() as JSONSchema)['properties'] as P
+        }
+
+        if (!properties) {
+            throw new OrbitingError('No properties were provided')
+        }
+
         // no point in forcing the user to specify these
         // if they are required
         const schema = {
