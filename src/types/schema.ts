@@ -35,20 +35,20 @@ export type ObjectProperty = {
 export type ArrayProperty = {
     type: 'array'
     items: { type: PropertyType['type'] }
-    default?: unknown[]
+    default?: unknown[] | null
 } & WhateverTheHellElse
 
 export type NumberProperty = {
     type: 'number' | 'integer'
-    default?: number
+    default?: number | null
 } & WhateverTheHellElse
 
 export type StringProperty = {
     type: 'string'
-    default?: string
+    default?: string | null
 } & WhateverTheHellElse
 
 export type BooleanProperty = {
     type: 'boolean'
-    default?: boolean
+    default?: boolean | null
 } & WhateverTheHellElse

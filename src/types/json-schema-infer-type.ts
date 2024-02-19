@@ -21,8 +21,10 @@ export type InferTypeFromSchema<T> = T extends {
       ? JSType extends keyof JSONSchemaType
           ? readonly JSONSchemaType[JSType][]
           : never
-      : T extends { type: infer JSType }
+      : T extends { type: infer JSType; nullable?: infer IsNullable }
         ? JSType extends keyof JSONSchemaType
-            ? JSONSchemaType[JSType]
+            ? IsNullable extends true
+                ? JSONSchemaType[JSType] | null
+                : JSONSchemaType[JSType]
             : never
         : never
