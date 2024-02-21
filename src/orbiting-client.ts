@@ -5,7 +5,7 @@ import type { AxiosInstance } from 'axios'
 import type { ObjectSchema } from 'fluent-json-schema'
 
 import { EventEmitter } from 'node:events'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 import { log } from './logger.js'
 import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
@@ -39,7 +39,7 @@ export class OrbitingClient<T> extends EventEmitter {
     private readonly wsClient: WebSocketClient | null = null
     private readonly websocketURL: string | null = null
 
-    private readonly queuePromise: Promise<unknown> = Promise.resolve()
+    private readonly actionQueue: (() => Promise<void>)[] = []
 
     constructor(private readonly settings: ClientSettings) {
         super()
@@ -101,35 +101,17 @@ export class OrbitingClient<T> extends EventEmitter {
 
         this.config = generateDefaultsFromSchema(schema) as T
 
-        this.queuePromise.then(() =>
-            this.axiosClient.post('/apps/schema', schema).catch(err => {
-                if (!axios.isAxiosError(err) || !err.response) {
-                    this.emit('error', err)
-                    log('Something went very wrong', err)
-                    return
-                }
-
-                // emit an error rather than throwing an error, since this promise is off in its
-                // own world and the user might not be able to catch it
-                this.emit('error', new OrbitingError(err.response.data.error))
-            }),
-        )
+        this.actionQueue.push(async () => {
+            await this.axiosClient.post('/apps/schema', schema)
+        })
 
         return this as unknown as OrbitingClient<InferTypeFromSchema<S>>
     }
 
     layout(layout: unknown) {
-        this.queuePromise.then(() =>
-            this.axiosClient.post('/apps/layout', { layout }).catch(err => {
-                if (!axios.isAxiosError(err) || !err.response) {
-                    this.emit('error', err)
-                    log('Something went very wrong', err)
-                    return
-                }
-
-                this.emit('error', new OrbitingError(err.response.data.error))
-            }),
-        )
+        this.actionQueue.push(async () => {
+            await this.axiosClient.post('/apps/layout', { layout })
+        })
 
         return this
     }
@@ -152,7 +134,7 @@ export class OrbitingClient<T> extends EventEmitter {
         return this.config
     }
 
-    async init({ waitForReconnects = false }): Promise<T> {
+    async init({ waitForReconnects = false } = {}): Promise<T> {
         if (this.isInitialized) {
             throw new OrbitingError('Client is already initialized')
         }
@@ -160,7 +142,22 @@ export class OrbitingClient<T> extends EventEmitter {
         // doing this allows for us to ensure that all web requests are finished
         // before we start the websocket connection
         log('Waiting for promises to resolve')
-        await this.queuePromise
+        for (const action of this.actionQueue) {
+            try {
+                await action()
+            } catch (err) {
+                if (err instanceof AxiosError && err.response) {
+                    throw new OrbitingError(
+                        'Failed to initialize the client: ' +
+                            err.response.data.error,
+                    )
+                }
+
+                throw new OrbitingError(
+                    'Failed to initialize the client: ' + err,
+                )
+            }
+        }
 
         // regardless what happens below, we are initialized
         this.isInitialized = true
