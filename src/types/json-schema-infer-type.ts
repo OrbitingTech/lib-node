@@ -8,6 +8,7 @@ export type JSONSchemaType = {
 }
 
 // typescript is both a blessing and a curse
+// todo: I am sorry for this lol
 export type InferTypeFromSchema<T> = T extends {
     type: 'object'
     properties: Record<string, unknown>
