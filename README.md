@@ -1,6 +1,6 @@
 # Orbiting NodeJS Library
 
-![Discord](https://img.shields.io/discord/1226968306221846588) ![Node LTS](https://img.shields.io/node/v-lts/orbiting)
+![Discord](https://img.shields.io/discord/1226968306221846588) ![NPM Version](https://img.shields.io/npm/v/orbiting)
 
 This is the official version of the NodeJS library for interfacing with the Orbiting Platform. This library features full TypeScript support and is designed to be very simple.
 
