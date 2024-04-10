@@ -86,7 +86,7 @@ const orb = createClient({
 }).schema(S.object().prop('maxSignUps', S.number())) as OrbitingClient<Config>
 ```
 
-# Contributing
+## Contributing
 
 We welcome and appreciate contributions from the community! If you'd like to contribute to this project, there are several ways you can get involved:
 
