@@ -42,6 +42,11 @@ try {
 
     throw err
 }
+
+// properties will be updated in the background as they are updated on the app's control panel
+setInterval(() => {
+    console.log(orb.config.maxSignUps)
+}, 1000)
 ```
 
 Types are also automatically inferred. Don't look at the code that makes this possible please and thank you.
@@ -69,6 +74,7 @@ createClient({
 ```ts
 import type { OrbitingClient } from 'orbiting'
 
+import S from 'fluent-json-schema'
 import { createClient } from 'orbiting'
 
 type Config = {
