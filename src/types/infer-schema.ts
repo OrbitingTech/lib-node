@@ -4,7 +4,7 @@ import type {
     ObjectProperty,
     PropertyType,
     PropertyTypeMap,
-} from './schema'
+} from './schema.js'
 
 export type InferObjectType<Properties extends ObjectProperties> = {
     readonly [K in keyof Properties]: InferIsNullable<

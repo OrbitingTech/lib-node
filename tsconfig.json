@@ -1,22 +1,24 @@
 {
     "compilerOptions": {
-        "target": "es5",
-        "module": "esnext",
-        "lib": ["esnext", "dom"],
-        "declaration": true,
-        "outDir": "./lib",
-        "rootDir": "./src",
-        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "target": "ES2020",
+        "resolveJsonModule": true,
+        "moduleDetection": "force",
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
 
-        "moduleResolution": "node",
-        "baseUrl": ".",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+
+        "module": "NodeNext",
+        "rootDir": "src",
+        "outDir": "lib",
         "sourceMap": true,
 
-        "esModuleInterop": true,
+        "declaration": true,
 
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"]
+        "lib": ["es2022"]
+    }
 }

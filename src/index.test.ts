@@ -1,7 +1,7 @@
 import test from 'ava'
 
-import orbiting from './index'
-import { OrbitingClient } from './orbiting-client'
+import orbiting from './index.js'
+import { OrbitingClient } from './orbiting-client.js'
 
 test('createClient', t => {
     t.assert(

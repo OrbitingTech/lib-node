@@ -4,8 +4,8 @@ import type { RawData } from 'ws'
 
 import { WebSocket } from 'ws'
 
+import { WebSocketError } from './errors.js'
 import { websocketLog } from './logger.js'
-import { OrbitingError } from './orbiting-client.js'
 
 export type Packet = {
     type: string
@@ -17,14 +17,6 @@ export type WebSocketOptions = {
     reconnectAttempts?: number
 
     timeoutMS?: number
-}
-
-export class WebSocketError extends OrbitingError {
-    name = 'WebSocketError'
-
-    constructor(public readonly message: string) {
-        super(message)
-    }
 }
 
 export class WebSocketClient<Schema extends ObjectProperties> {

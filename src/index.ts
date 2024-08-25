@@ -1,6 +1,6 @@
-import type { ClientSettings } from './orbiting-client'
+import type { ClientSettings } from './orbiting-client.js'
 
-import { OrbitingBuilder } from './orbiting-client'
+import { OrbitingBuilder } from './orbiting-client.js'
 
 type OrbitingModule = {
     withSettings(settings: ClientSettings): OrbitingBuilder
@@ -12,13 +12,13 @@ const orbiting: OrbitingModule = Object.freeze({
     },
 })
 
-export type * from './types/infer-schema'
-export type * from './types/schema'
+export type * from './types/infer-schema.js'
+export type * from './types/schema.js'
 
-export type * from './orbiting-client'
-export * from './orbiting-client'
+export type * from './orbiting-client.js'
+export * from './orbiting-client.js'
 
-export type * from './websocket-handler'
-export * from './websocket-handler'
+export type * from './websocket-handler.js'
+export * from './websocket-handler.js'
 
 export default orbiting

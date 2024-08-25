@@ -14,12 +14,7 @@ export type PropertyType =
     | Property<'string'>
     | Property<'boolean'>
 
-export interface PropertyMetadata {}
-
-export interface Property<
-    Type extends keyof PropertyTypeMap,
-    SchemaType = PropertyTypeMap[Type],
-> extends PropertyMetadata {
+export interface PropertyMetadata {
     /**
      * The display name for this property on the Orbiting dashboard.
      */
@@ -29,7 +24,12 @@ export interface Property<
      * Typically used as a foot note to describe what this property does.
      */
     description?: string
+}
 
+export interface Property<
+    Type extends keyof PropertyTypeMap,
+    SchemaType = PropertyTypeMap[Type],
+> extends PropertyMetadata {
     type: Type
     default: SchemaType | null
     nullable?: boolean

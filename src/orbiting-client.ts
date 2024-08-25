@@ -6,6 +6,7 @@ import type { AxiosInstance } from 'axios'
 import { EventEmitter } from 'node:events'
 import axios from 'axios'
 
+import { OrbitingError } from './errors.js'
 import { log } from './logger.js'
 import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
 import { WebSocketClient } from './websocket-handler.js'
@@ -25,14 +26,6 @@ export type ClientSettings = {
 export type AppSettings<S extends ObjectProperties> = {
     schema: S
     layout: unknown // todo
-}
-
-export class OrbitingError extends Error {
-    name = 'OrbitingError'
-
-    constructor(public readonly message: string) {
-        super(message)
-    }
 }
 
 export class OrbitingBuilder<

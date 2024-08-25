@@ -1,5 +1,5 @@
-import type { InferObjectType } from 'src/types/infer-schema'
-import type { ObjectProperties } from 'src/types/schema'
+import type { InferObjectType } from '../types/infer-schema.js'
+import type { ObjectProperties } from '../types/schema.js'
 
 export function generateDefaultsFromSchema<S extends ObjectProperties>(
     schema: S,
