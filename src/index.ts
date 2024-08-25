@@ -1,11 +1,24 @@
-import type { ClientSettings } from './orbiting-client.js'
+import type { ClientSettings } from './orbiting-client'
 
-import { OrbitingClient } from './orbiting-client.js'
+import { OrbitingBuilder } from './orbiting-client'
 
-export function createClient(config: ClientSettings) {
-    return new OrbitingClient(config)
+type OrbitingModule = {
+    withSettings(settings: ClientSettings): OrbitingBuilder
 }
 
-export type * from './types/json-schema-infer-type.js'
-export type * from './types/schema.js'
-export * from './orbiting-client.js'
+const orbiting: OrbitingModule = Object.freeze({
+    withSettings(settings) {
+        return new OrbitingBuilder(settings)
+    },
+})
+
+export type * from './types/infer-schema'
+export type * from './types/schema'
+
+export type * from './orbiting-client'
+export * from './orbiting-client'
+
+export type * from './websocket-handler'
+export * from './websocket-handler'
+
+export default orbiting

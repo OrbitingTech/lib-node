@@ -1,12 +1,12 @@
-import type { InferTypeFromSchema } from '../types/json-schema-infer-type.js'
-import type { JSONSchema } from '../types/schema.js'
+import type { InferObjectType } from 'src/types/infer-schema'
+import type { ObjectProperties } from 'src/types/schema'
 
-export function generateDefaultsFromSchema<S extends JSONSchema>(
+export function generateDefaultsFromSchema<S extends ObjectProperties>(
     schema: S,
-): InferTypeFromSchema<S> {
+): InferObjectType<S> {
     const defaults: Record<string, unknown> = {}
 
-    for (const [propertyName, property] of Object.entries(schema.properties)) {
+    for (const [propertyName, property] of Object.entries(schema)) {
         if (property.default === undefined) {
             throw new Error(
                 `Property "${propertyName}" is missing a default value`,
@@ -19,5 +19,5 @@ export function generateDefaultsFromSchema<S extends JSONSchema>(
         defaults[propertyName] = property.default
     }
 
-    return defaults as InferTypeFromSchema<S>
+    return defaults as InferObjectType<S>
 }

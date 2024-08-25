@@ -1,8 +1,11 @@
 import test from 'ava'
 
-import { createClient } from './index.js'
-import { OrbitingClient } from './orbiting-client.js'
+import orbiting from './index'
+import { OrbitingClient } from './orbiting-client'
 
 test('createClient', t => {
-    t.assert(createClient({ token: 'test' }) instanceof OrbitingClient)
+    t.assert(
+        orbiting.withSettings({ token: 'test' }).createConnection() instanceof
+            OrbitingClient,
+    )
 })

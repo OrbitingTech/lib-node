@@ -1,54 +1,56 @@
-// I can't possibly list all of the types, so I'll just use a catch-all
-export type WhateverTheHellElse = { [key: string]: unknown }
+export type PropertyTypeMap = {
+    string: string
+    number: number
+    integer: number
+    boolean: boolean
+    object: Record<string, unknown>
+    array: unknown[]
+}
 
 export type PropertyType =
     | ObjectProperty
     | ArrayProperty
     | NumberProperty
-    | StringProperty
-    | BooleanProperty
+    | Property<'string'>
+    | Property<'boolean'>
 
-export type TopLevelObjectProperty = Pick<
-    ObjectProperty,
-    'type' | 'properties'
-> & {
-    // make all the top-level properties be required to have a default
-    properties: Record<
-        string,
-        PropertyType & Required<Pick<PropertyType, 'default'>>
-    >
+export interface PropertyMetadata {}
+
+export interface Property<
+    Type extends keyof PropertyTypeMap,
+    SchemaType = PropertyTypeMap[Type],
+> extends PropertyMetadata {
+    /**
+     * The display name for this property on the Orbiting dashboard.
+     */
+    title?: string
+
+    /**
+     * Typically used as a foot note to describe what this property does.
+     */
+    description?: string
+
+    type: Type
+    default: SchemaType | null
+    nullable?: boolean
 }
 
-// todo: support fluent-json-schema and zod
-export type JSONSchema = TopLevelObjectProperty
+export type ObjectProperties = Record<string, PropertyType>
 
-export type ObjectProperty = {
-    type: 'object'
-    properties: Record<string, PropertyType>
-    default?: Record<string, unknown>
+export interface ObjectProperty extends Property<'object'> {
+    properties: ObjectProperties
 
     additionalProperties?: boolean
-    patternProperties?: Record<string, PropertyType>
+    patternProperties?: ObjectProperties
     required?: string[]
-} & WhateverTheHellElse
+}
 
-export type ArrayProperty = {
-    type: 'array'
-    items: { type: PropertyType['type'] }
-    default?: unknown[] | null
-} & WhateverTheHellElse
+export interface ArrayProperty extends Property<'array'> {
+    // todo: items: PropertyType (lots of frontend work must be done for this)
+    items: { type: keyof PropertyTypeMap }
+}
 
-export type NumberProperty = {
-    type: 'number' | 'integer'
-    default?: number | null
-} & WhateverTheHellElse
-
-export type StringProperty = {
-    type: 'string'
-    default?: string | null
-} & WhateverTheHellElse
-
-export type BooleanProperty = {
-    type: 'boolean'
-    default?: boolean | null
-} & WhateverTheHellElse
+export interface NumberProperty extends Property<'integer' | 'number'> {
+    minimum?: number
+    maximum?: number
+}
