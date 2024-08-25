@@ -127,7 +127,11 @@ export class OrbitingClient<
 
     private async sendSettings() {
         try {
-            await this.axiosClient.post('/apps/schema', this.settings.schema)
+            await this.axiosClient.post('/apps/schema', {
+                type: 'object',
+                properties: this.settings.schema,
+            })
+
             await this.axiosClient.post('/apps/layout', {
                 layout: this.settings.layout,
             })
