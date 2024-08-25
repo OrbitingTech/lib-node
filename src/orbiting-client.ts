@@ -132,9 +132,10 @@ export class OrbitingClient<
                 properties: this.settings.schema,
             })
 
-            await this.axiosClient.post('/apps/layout', {
-                layout: this.settings.layout,
-            })
+            if (this.settings.layout)
+                await this.axiosClient.post('/apps/layout', {
+                    layout: this.settings.layout,
+                })
         } catch (err) {
             if (!axios.isAxiosError(err) || !err.response) {
                 throw err
