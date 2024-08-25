@@ -8,7 +8,7 @@
         ".": "./lib/index.js"
     },
     "scripts": {
-        "prepublish": "rimraf lib && tsc -b tsconfig.dist.json",
+        "prepare": "rimraf lib && tsc -b tsconfig.dist.json",
         "format": "prettier --write .",
         "test": "tsc && ava",
         "coverage": "tsc && c8 ava"
@@ -17,7 +17,7 @@
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/OrbitingTech/lib-node.git"
+        "url": "git+https://github.com/OrbitingTech/lib-node.git"
     },
     "ava": {
         "require": [
