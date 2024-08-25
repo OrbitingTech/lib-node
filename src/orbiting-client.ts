@@ -163,7 +163,6 @@ export class OrbitingClient<
         }
 
         this._config = response.data
-        return this.config
     }
 
     async init() {
@@ -182,6 +181,12 @@ export class OrbitingClient<
         }
 
         this.wsClient!.connect()
+
+        // todo: make this not dependent on the listeners system, since, if someone decides
+        // to clear all listeners they will likely get an unexpected result
+        this.on('configUpdate', config => {
+            this._config = config
+        })
     }
 
     close() {

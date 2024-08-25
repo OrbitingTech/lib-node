@@ -72,11 +72,11 @@ export class WebSocketClient<Schema extends ObjectProperties> {
             }
         }, this.options.timeoutMS || 5000)
 
-        this.ws.on('open', this.onWebsocketOpen)
-        this.ws.on('message', this.onWebsocketMessage)
+        this.ws.on('open', this.onWebsocketOpen.bind(this))
+        this.ws.on('message', this.onWebsocketMessage.bind(this))
 
-        this.ws.on('error', this.onWebsocketClose)
-        this.ws.on('close', this.onWebsocketClose)
+        this.ws.on('error', this.onWebsocketClose.bind(this))
+        this.ws.on('close', this.onWebsocketClose.bind(this))
     }
 
     private onWebsocketOpen() {
