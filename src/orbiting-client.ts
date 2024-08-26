@@ -111,7 +111,7 @@ export class OrbitingClient<
             websocketURL.protocol === 'https:' ? 'wss:' : 'ws:'
 
         websocketURL.protocol = websocketProtocol
-        websocketURL.pathname = '/api/ws'
+        websocketURL.pathname += '/ws'
 
         this.wsClient = new WebSocketClient(
             this,
