@@ -1,4 +1,5 @@
 import type { InferObjectType } from './types/infer-schema.js'
+import type { Layout } from './types/layout.js'
 import type { ObjectProperties } from './types/schema.js'
 import type { WebSocketOptions } from './websocket-handler.js'
 import type { AxiosInstance } from 'axios'
@@ -25,14 +26,14 @@ export type ClientSettings = {
 
 export type AppSettings<S extends ObjectProperties> = {
     schema: S
-    layout: unknown // todo
+    layout: Layout<S> | null
 }
 
 export class OrbitingBuilder<
     Schema extends ObjectProperties = NonNullable<unknown>,
 > {
     private schema: Schema = {} as Schema
-    private layout: unknown = null
+    private layout: Layout<Schema> | null = null
 
     constructor(private readonly settings: ClientSettings) {}
 
@@ -46,7 +47,7 @@ export class OrbitingBuilder<
         return this as OrbitingBuilder<NewSchema>
     }
 
-    public withLayout(layout: unknown) {
+    public withLayout(...layout: Layout<Schema>) {
         this.layout = layout
         return this
     }
