@@ -8,13 +8,15 @@ export type LayoutSection<Schema extends SchemaType> = {
     title?: string
     description?: string
 
-    controls: Control<Schema>[]
+    controls: {
+        [Key in keyof Schema]: Control<Schema, Key>
+    }[keyof Schema][] // create a map of each key to its Control type then transform it into a union array type
 }
 
-export interface Control<Schema extends SchemaType> {
-    for: keyof Schema
+export type Control<Schema extends SchemaType, Key extends keyof Schema> = {
+    for: Key
     label?: string
-    renderAs?: ControlRenderAsMap[Schema[this['for']]['type']]
+    renderAs?: ControlRenderAsMap[Schema[Key]['type']]
 }
 
 export type NumberRenderAs = 'input' | 'slider'
