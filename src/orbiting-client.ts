@@ -10,6 +10,7 @@ import axios from 'axios'
 import { OrbitingError } from './errors.js'
 import { log } from './logger.js'
 import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
+import { isNewCacheObject } from './utils/object-cache.js'
 import { WebSocketClient } from './websocket-handler.js'
 
 const API_BASE_URL = 'https://orbiting.app/api'
@@ -17,11 +18,18 @@ const API_BASE_URL = 'https://orbiting.app/api'
 export type ClientSettings = {
     token: string
 
+    caching?: CacheSettings
+
     devMode?: boolean
     baseURL?: string
 
     fetchOnly?: boolean
     websocket?: WebSocketOptions
+}
+
+export type CacheSettings = {
+    schema?: boolean
+    layout?: boolean
 }
 
 export type AppSettings<S extends ObjectProperties> = {
@@ -128,12 +136,23 @@ export class OrbitingClient<
 
     private async sendSettings() {
         try {
-            await this.axiosClient.post('/apps/schema', {
-                type: 'object',
-                properties: this.settings.schema,
-            })
+            const cacheSchema = this.settings.caching?.schema ?? true
+            const cacheLayout = this.settings.caching?.layout ?? true
 
-            if (this.settings.layout)
+            if (
+                !cacheSchema ||
+                isNewCacheObject('schema', this.settings.schema)
+            )
+                await this.axiosClient.post('/apps/schema', {
+                    type: 'object',
+                    properties: this.settings.schema,
+                })
+
+            if (
+                this.settings.layout &&
+                (!cacheLayout ||
+                    isNewCacheObject('layout', this.settings.layout))
+            )
                 await this.axiosClient.post('/apps/layout', {
                     layout: this.settings.layout,
                 })
