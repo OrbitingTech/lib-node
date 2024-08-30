@@ -1,6 +1,6 @@
 {
     "name": "orbiting",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "The official Orbiting client library.",
     "main": "lib/index.js",
     "type": "module",
