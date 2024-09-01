@@ -22,7 +22,7 @@ export type Control<Schema extends SchemaType, Key extends keyof Schema> = {
 export type NumberRenderAs = 'input' | 'slider'
 
 export type ControlRenderAsMap = {
-    string: 'input' | 'multiline'
+    string: 'input' | 'multiline' | 'enum'
     number: NumberRenderAs
     integer: NumberRenderAs
     boolean: 'switch' | 'checkbox'
