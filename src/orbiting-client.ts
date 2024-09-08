@@ -11,6 +11,7 @@ import { OrbitingError } from './errors.js'
 import { log } from './logger.js'
 import { generateDefaultsFromSchema } from './utils/generate-defaults-from-schema.js'
 import { isNewCacheObject } from './utils/object-cache.js'
+import { parseJwtPayload } from './utils/parse-jwt-payload.js'
 import { WebSocketClient } from './websocket-handler.js'
 
 const API_BASE_URL = 'https://orbiting.app/api'
@@ -19,8 +20,6 @@ export type ClientSettings = {
     token: string
 
     caching?: CacheSettings
-
-    devMode?: boolean
     baseURL?: string
 
     fetchOnly?: boolean
@@ -92,10 +91,21 @@ export class OrbitingClient<
 
     private isInitialized: boolean = false
 
+    public tokenType: string = 'dev'
+    private tokenIdPart: string = 'unset'
+
     constructor(
         private readonly settings: ClientSettings & AppSettings<Schema>,
     ) {
         super()
+
+        const payload = parseJwtPayload(settings.token)
+
+        if (typeof payload?.tokenType === 'string')
+            this.tokenType = payload.tokenType
+
+        if (typeof payload?.token === 'string')
+            this.tokenIdPart = payload?.token.slice(-6)
 
         this._config = generateDefaultsFromSchema(settings.schema)
 
@@ -135,13 +145,17 @@ export class OrbitingClient<
     }
 
     private async sendSettings() {
+        const getCacheKey = (key: string) => {
+            return `${key}-${this.tokenType}-${this.tokenIdPart}`
+        }
+
         try {
             const cacheSchema = this.settings.caching?.schema ?? true
             const cacheLayout = this.settings.caching?.layout ?? true
 
             if (
                 !cacheSchema ||
-                isNewCacheObject('schema', this.settings.schema)
+                isNewCacheObject(getCacheKey('schema'), this.settings.schema)
             )
                 await this.axiosClient.post('/apps/schema', {
                     type: 'object',
@@ -151,7 +165,10 @@ export class OrbitingClient<
             if (
                 this.settings.layout &&
                 (!cacheLayout ||
-                    isNewCacheObject('layout', this.settings.layout))
+                    isNewCacheObject(
+                        getCacheKey('layout'),
+                        this.settings.layout,
+                    ))
             )
                 await this.axiosClient.post('/apps/layout', {
                     layout: this.settings.layout,
