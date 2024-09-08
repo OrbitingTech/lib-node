@@ -1,6 +1,10 @@
 .vscode/
 
 src/
+examples/
+docs/
+.zed/
+.prettierignore
 
 .eslintrc.json
 .gitignore
