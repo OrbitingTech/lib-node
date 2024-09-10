@@ -16,14 +16,18 @@ import { WebSocketClient } from './websocket-handler.js'
 
 const API_BASE_URL = 'https://orbiting.app/api'
 
+export type ClientUpdateMode = 'fetch' | 'live'
+
 export type ClientSettings = {
     token: string
 
     caching?: CacheSettings
     baseURL?: string
 
-    fetchOnly?: boolean
     websocket?: WebSocketOptions
+
+    mode?: ClientUpdateMode
+    fetchFrequencySecs?: number
 }
 
 export type CacheSettings = {
@@ -119,8 +123,8 @@ export class OrbitingClient<
             headers: { Authorization: `Bearer ${this.settings.token}` },
         })
 
-        if (settings.fetchOnly) {
-            this.fetchConfig()
+        settings.mode ??= 'fetch'
+        if (settings.mode === 'fetch') {
             return
         }
 
@@ -186,6 +190,8 @@ export class OrbitingClient<
     }
 
     private async fetchConfig() {
+        log('Fetching new config...')
+
         let response
         try {
             response = await this.axiosClient.get('/apps/config')
@@ -199,7 +205,10 @@ export class OrbitingClient<
             )
         }
 
+        log('Config fetched and updated')
+
         this._config = response.data
+        this.emit('configUpdate', this._config)
     }
 
     async init() {
@@ -212,8 +221,11 @@ export class OrbitingClient<
         // regardless what happens below, we are initialized
         this.isInitialized = true
 
-        if (this.settings.fetchOnly) {
-            await this.fetchConfig()
+        if (this.settings.mode === 'fetch') {
+            setInterval(
+                this.fetchConfig.bind(this),
+                (this.settings.fetchFrequencySecs ?? 60 * 30) * 1000,
+            )
             return
         }
 
@@ -227,7 +239,7 @@ export class OrbitingClient<
     }
 
     close() {
-        if (this.settings.fetchOnly || !this.wsClient) {
+        if (this.settings.mode === 'fetch' || !this.wsClient) {
             return
         }
 
