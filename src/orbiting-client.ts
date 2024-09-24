@@ -92,6 +92,7 @@ export class OrbitingClient<
 
     private readonly axiosClient: AxiosInstance
     private readonly wsClient: WebSocketClient<Schema> | null = null
+    private fetchInterval: ReturnType<typeof setInterval> | null = null
 
     private isInitialized: boolean = false
 
@@ -222,10 +223,14 @@ export class OrbitingClient<
         this.isInitialized = true
 
         if (this.settings.mode === 'fetch') {
-            setInterval(
+            // do the first initial fetch
+            await this.fetchConfig()
+
+            this.fetchInterval = setInterval(
                 this.fetchConfig.bind(this),
                 (this.settings.fetchFrequencySecs ?? 60 * 30) * 1000,
             )
+
             return
         }
 
@@ -239,10 +244,13 @@ export class OrbitingClient<
     }
 
     close() {
-        if (this.settings.mode === 'fetch' || !this.wsClient) {
-            return
+        if (this.wsClient) {
+            this.wsClient.close()
         }
 
-        this.wsClient.close()
+        if (this.fetchInterval) {
+            clearInterval(this.fetchInterval)
+            this.fetchInterval = null
+        }
     }
 }
