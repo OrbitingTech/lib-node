@@ -11,6 +11,7 @@ export type PropertyType =
     | ObjectProperty
     | ArrayProperty
     | NumberProperty
+    | StringWithEnumProperty
     | Property<'string'>
     | Property<'boolean'>
 
@@ -47,10 +48,15 @@ export interface ObjectProperty extends Property<'object'> {
 
 export interface ArrayProperty extends Property<'array'> {
     // todo: items: PropertyType (lots of frontend work must be done for this)
-    items: { type: keyof PropertyTypeMap }
+    items: { type: keyof PropertyTypeMap; enum?: string[] }
 }
 
 export interface NumberProperty extends Property<'integer' | 'number'> {
     minimum?: number
     maximum?: number
+}
+
+export interface StringWithEnumProperty<EnumTypes extends string = ''>
+    extends Property<'string'> {
+    enum: EnumTypes[]
 }
