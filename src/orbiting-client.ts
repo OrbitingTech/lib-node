@@ -5,6 +5,7 @@ import type { WebSocketOptions } from './websocket-handler.js'
 import type { AxiosInstance } from 'axios'
 
 import { EventEmitter } from 'node:events'
+import { existsSync, readFileSync, watch, writeFileSync } from 'node:fs'
 import axios from 'axios'
 
 import { OrbitingError } from './errors.js'
@@ -16,7 +17,7 @@ import { WebSocketClient } from './websocket-handler.js'
 
 const API_BASE_URL = 'https://orbiting.app/api'
 
-export type ClientUpdateMode = 'fetch' | 'live'
+export type ClientUpdateMode = 'offline' | 'fetch' | 'live'
 
 export type ClientSettings = {
     token: string
@@ -24,10 +25,17 @@ export type ClientSettings = {
     caching?: CacheSettings
     baseURL?: string
 
+    offline?: OfflineSettings
+
     websocket?: WebSocketOptions
 
     mode?: ClientUpdateMode
     fetchFrequencySecs?: number
+}
+
+export type OfflineSettings = {
+    file?: string
+    watch?: boolean
 }
 
 export type CacheSettings = {
@@ -94,6 +102,8 @@ export class OrbitingClient<
     private readonly wsClient: WebSocketClient<Schema> | null = null
     private fetchInterval: ReturnType<typeof setInterval> | null = null
 
+    private watchController: AbortController | null = null
+
     private isInitialized: boolean = false
 
     public tokenType: string = 'dev'
@@ -125,7 +135,7 @@ export class OrbitingClient<
         })
 
         settings.mode ??= 'fetch'
-        if (settings.mode === 'fetch') {
+        if (settings.mode !== 'live') {
             return
         }
 
@@ -212,15 +222,80 @@ export class OrbitingClient<
         this.emit('configUpdate', this._config)
     }
 
+    private watchFile() {
+        const fileName = this.settings.offline?.file || 'orbiting.json'
+
+        const readFileToJson = () => {
+            const fileContents = readFileSync(fileName, 'utf-8')
+            const parsed = JSON.parse(fileContents)
+
+            delete parsed['$schema']
+            return parsed
+        }
+
+        try {
+            if (!existsSync(fileName)) {
+                log(
+                    `Creating default \`${fileName}\` with defaults from schema`,
+                )
+
+                // create the initial file with the config we currently have & schema
+                writeFileSync(
+                    fileName,
+                    // todo: populate $schema property with valid path to user's schema in json file
+                    JSON.stringify({ $schema: '', ...this._config }, null, 2),
+                    'utf-8',
+                )
+            } else {
+                this._config = Object.assign({}, this._config, readFileToJson())
+            }
+        } catch (err) {
+            throw new OrbitingError(
+                'Failed to parse offline configuration file: ' + err,
+            )
+        }
+
+        if (!(this.settings.offline?.watch ?? true)) {
+            return
+        }
+
+        this.watchController = new AbortController()
+
+        watch(fileName, { signal: this.watchController.signal }, event => {
+            if (event !== 'change') {
+                return
+            }
+
+            log('Config file changed, reading new contents')
+
+            try {
+                // assign as a temporary fix for missing properties in the file
+                this._config = Object.assign({}, this._config, readFileToJson())
+                this.emit('configUpdate', this._config)
+
+                log('Updated config')
+            } catch (err) {
+                log(`Failed to parse \`${fileName}\` to JSON`, err)
+            }
+        })
+
+        log(`Now watching \`${fileName}\` for changes`)
+    }
+
     async init() {
         if (this.isInitialized) {
             throw new OrbitingError('Client is already initialized')
         }
 
-        await this.sendSettings()
-
         // regardless what happens below, we are initialized
         this.isInitialized = true
+
+        if (this.settings.mode === 'offline') {
+            this.watchFile()
+            return
+        }
+
+        await this.sendSettings()
 
         if (this.settings.mode === 'fetch') {
             // do the first initial fetch
@@ -244,6 +319,11 @@ export class OrbitingClient<
     }
 
     close() {
+        if (this.watchController) {
+            this.watchController.abort()
+            this.watchController = null
+        }
+
         if (this.wsClient) {
             this.wsClient.close()
         }
